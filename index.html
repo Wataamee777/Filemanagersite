@@ -11,6 +11,7 @@
       height: 100vh;
     }
 
+    /* 左側のメニュー */
     .sidebar {
       width: 350px;
       background: #67abeb;
@@ -19,6 +20,7 @@
       box-sizing: border-box;
     }
 
+    /* 右側の表示エリア */
     .main {
       flex: 1;
       position: relative;
@@ -27,7 +29,7 @@
       overflow: auto;
     }
 
-    .main img, .main video {
+    .main img, .main video, .main audio, .main pre {
       max-width: 100%;
       max-height: 80vh;
       display: block;
@@ -64,7 +66,20 @@
     #copyBtn:hover {
       background: #2980b9;
     }
+
+    /* PDFビューアのスタイル */
+    .pdf-container {
+      max-height: 80vh;
+      overflow: auto;
+      margin-top: 20px;
+    }
   </style>
+  <!-- MIDI.js -->
+  <script src="https://cdn.jsdelivr.net/npm/midi.js@0.3.0/midi.min.js"></script>
+  <!-- PDF.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <!-- JSZip -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
 </head>
 <body>
 
@@ -77,18 +92,10 @@
     <button id="copyBtn" style="display:none;">コピー</button>
   </div>
 
-  <!-- MIDI.js ライブラリの読み込み -->
-  <script src="https://cdn.jsdelivr.net/npm/midi.js@0.3.0/dist/midi.min.js"></script>
-  <!-- JSZip ライブラリの読み込み -->
-  <script src="https://cdn.jsdelivr.net/npm/jszip@3.7.1/dist/jszip.min.js"></script>
-
   <script>
     const input = document.getElementById('fileInput');
     const viewer = document.getElementById('viewer');
     const copyBtn = document.getElementById('copyBtn');
-
-    // MIDI.js の音源URL
-    const soundfontUrl = 'https://cdn.jsdelivr.net/npm/midi.js@0.3.0/soundfonts/';
 
     input.addEventListener('change', () => {
       const file = input.files[0];
@@ -100,33 +107,40 @@
 
       const type = file.type;
 
+      // 画像ファイルの表示
       if (type.startsWith('image/')) {
         const img = document.createElement('img');
         img.src = URL.createObjectURL(file);
         viewer.appendChild(img);
+
+      // 動画ファイルの表示
       } else if (type.startsWith('video/')) {
         const video = document.createElement('video');
         video.src = URL.createObjectURL(file);
         video.controls = true;
         viewer.appendChild(video);
+
+      // 音声ファイルの表示
       } else if (type.startsWith('audio/')) {
         const audio = document.createElement('audio');
         audio.src = URL.createObjectURL(file);
         audio.controls = true;
         viewer.appendChild(audio);
+
+      // MIDIファイルの再生
       } else if (file.name.endsWith('.midi') || file.name.endsWith('.mid')) {
         const midiUrl = URL.createObjectURL(file);
 
         // MIDI.jsで音源の設定とファイルの再生を行う
         MIDI.loadPlugin({
-          soundfontUrl: soundfontUrl,
-          instrument: 'acoustic_grand_piano', // 使用する楽器
+          soundfontUrl: 'https://cdn.jsdelivr.net/npm/midi.js@0.3.0/soundfonts/',
+          instrument: 'acoustic_grand_piano',
           onprogress: function(state, progress) {
             console.log(state + ': ' + progress + '%');
           },
           onready: function() {
             MIDI.Player.loadFile(midiUrl, function() {
-              MIDI.Player.start(); // MIDIファイルの再生
+              MIDI.Player.start();
             });
           }
         });
@@ -134,6 +148,8 @@
         const midiInfo = document.createElement('p');
         midiInfo.textContent = 'MIDIファイルが読み込まれました。再生中...';
         viewer.appendChild(midiInfo);
+
+      // ZIPファイルの処理
       } else if (file.name.endsWith('.zip')) {
         const zip = new JSZip();
         zip.loadAsync(file)
@@ -169,6 +185,44 @@
             errorMessage.textContent = 'ZIPファイルの読み込み中にエラーが発生しました。';
             viewer.appendChild(errorMessage);
           });
+
+      // PDFファイルの表示
+      } else if (file.name.endsWith('.pdf')) {
+        const pdfContainer = document.createElement('div');
+        pdfContainer.classList.add('pdf-container');
+        viewer.appendChild(pdfContainer);
+
+        const reader = new FileReader();
+        reader.onload = function() {
+          const typedArray = new Uint8Array(reader.result);
+          
+          // PDF.jsでPDFを表示
+          pdfjsLib.getDocument(typedArray).promise.then(function(pdf) {
+            console.log('PDF loaded');
+            
+            // 最初のページを表示
+            pdf.getPage(1).then(function(page) {
+              const scale = 1.5;
+              const viewport = page.getViewport({ scale: scale });
+              
+              const canvas = document.createElement('canvas');
+              pdfContainer.appendChild(canvas);
+              const context = canvas.getContext('2d');
+              canvas.height = viewport.height;
+              canvas.width = viewport.width;
+              
+              // PDFページの描画
+              page.render({ canvasContext: context, viewport: viewport });
+            });
+          }).catch(function(error) {
+            const errorMessage = document.createElement('p');
+            errorMessage.textContent = 'PDFの読み込み中にエラーが発生しました。';
+            viewer.appendChild(errorMessage);
+          });
+        };
+        reader.readAsArrayBuffer(file);
+
+      // その他のテキストファイルの処理
       } else {
         const reader = new FileReader();
         reader.onload = () => {
