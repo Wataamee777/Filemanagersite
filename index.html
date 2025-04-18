@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>ファイルビューア</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      display: flex;
+      height: 100vh;
+    }
+
+    /* 左側のメニュー */
+    .sidebar {
+      width: 200px;
+      background: #2c3e50;
+      color: white;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    /* 右側の表示エリア */
+    .main {
+      flex: 1;
+      position: relative;
+      padding: 20px;
+      background: #f4f4f4;
+      overflow: auto;
+    }
+
+    .main pre, .main video, .main audio, .main img {
+      max-width: 100%;
+      margin-top: 10px;
+    }
+
+    /* コピー用ボタン */
+    #copyBtn {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      padding: 10px 15px;
+      background: #3498db;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    #copyBtn:hover {
+      background: #2980b9;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="sidebar">
+    <h2>ファイル選択</h2>
+    <input type="file" id="fileInput">
+  </div>
+
+  <div class="main">
+    <div id="output"></div>
+    <button id="copyBtn">コピー</button>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('fileInput');
+    const output = document.getElementById('output');
+    const copyBtn = document.getElementById('copyBtn');
+    const mediaTypes = ['png', 'jpg', 'jpeg', 'gif','tiff', ',AVI','MOV','FLV','WebM','bmp', 'mp4', 'mp3', 'webm', 'wav', 'ogg','AIFF','FLAC','MPEG','AAC','opus','m4a','wma'];
+
+    fileInput.addEventListener('change', async () => {
+      output.innerHTML = '';
+      const file = fileInput.files[0];
+      if (!file) return;
+
+      const ext = file.name.split('.').pop().toLowerCase();
+
+      if (mediaTypes.includes(ext)) {
+        const url = URL.createObjectURL(file);
+        let element;
+        if (['png', 'jpg', 'jpeg', 'gif', 'bmp','tiff'].includes(ext)) {
+          element = document.createElement('img');
+          element.src = url;
+        } else if (['mp4', 'webm','mov','bpm','avi','flv'].includes(ext)) {
+          element = document.createElement('video');
+          element.src = url;
+          element.controls = true;
+        } else if (['mp3', 'wav',  'ogg','AIFF','FLAC','MPEG','AAC','opus','m4a','wma'].includes(ext)) {
+          element = document.createElement('audio');
+          element.src = url;
+          element.controls = true;
+        }
+        output.appendChild(element);
+      } else {
+        const text = await file.text();
+        const pre = document.createElement('pre');
+        pre.textContent = text;
+        output.appendChild(pre);
+      }
+    });
+
+    copyBtn.addEventListener('click', () => {
+      const pre = output.querySelector('pre');
+      if (pre) {
+        navigator.clipboard.writeText(pre.textContent)
+          .then(() => alert('コピーしました！'))
+          .catch(err => alert('コピーに失敗しました'));
+      } else {
+        alert('コピーできるテキストがありません');
+      }
+    });
+  </script>
+</body>
+</html>
