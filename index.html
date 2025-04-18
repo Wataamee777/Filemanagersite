@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>ファイルビューア</title>
+  <title>ファイルビューア - クッキー保存</title>
   <style>
     body {
       margin: 0;
@@ -97,10 +97,43 @@
     const viewer = document.getElementById('viewer');
     const copyBtn = document.getElementById('copyBtn');
 
-    input.addEventListener('change', () => {
-      const file = input.files[0];
-      if (!file) return;
+    // クッキーからファイルを復元する関数
+    function loadFromCookies() {
+      const fileData = getCookie('fileData');
+      if (fileData) {
+        const file = JSON.parse(atob(fileData));
+        displayFile(file);
+      }
+    }
 
+    // クッキーにファイルを保存する関数
+    function saveToCookies(file) {
+      const fileData = btoa(JSON.stringify(file));
+      setCookie('fileData', fileData, 400);  // クッキーを400日間保存
+    }
+
+    // クッキーを設定する関数
+    function setCookie(name, value, days) {
+      const date = new Date();
+      date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+      const expires = `expires=${date.toUTCString()}`;
+      document.cookie = `${name}=${value}; ${expires}; path=/`;
+    }
+
+    // クッキーを取得する関数
+    function getCookie(name) {
+      const nameEQ = `${name}=`;
+      const ca = document.cookie.split(';');
+      for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+      }
+      return null;
+    }
+
+    // ファイルの表示関数
+    function displayFile(file) {
       viewer.innerHTML = '';
       viewer.appendChild(copyBtn);
       copyBtn.style.display = 'none';
@@ -110,26 +143,26 @@
       // 画像ファイルの表示
       if (type.startsWith('image/')) {
         const img = document.createElement('img');
-        img.src = URL.createObjectURL(file);
+        img.src = file.data;
         viewer.appendChild(img);
 
       // 動画ファイルの表示
       } else if (type.startsWith('video/')) {
         const video = document.createElement('video');
-        video.src = URL.createObjectURL(file);
+        video.src = file.data;
         video.controls = true;
         viewer.appendChild(video);
 
       // 音声ファイルの表示
       } else if (type.startsWith('audio/')) {
         const audio = document.createElement('audio');
-        audio.src = URL.createObjectURL(file);
+        audio.src = file.data;
         audio.controls = true;
         viewer.appendChild(audio);
 
       // MIDIファイルの再生
       } else if (file.name.endsWith('.midi') || file.name.endsWith('.mid')) {
-        const midiUrl = URL.createObjectURL(file);
+        const midiUrl = file.data;
 
         // MIDI.jsで音源の設定とファイルの再生を行う
         MIDI.loadPlugin({
@@ -152,7 +185,7 @@
       // ZIPファイルの処理
       } else if (file.name.endsWith('.zip')) {
         const zip = new JSZip();
-        zip.loadAsync(file)
+        zip.loadAsync(file.data)
           .then(function(contents) {
             const fileNames = Object.keys(contents.files);
             const fileList = document.createElement('ul');
@@ -238,7 +271,29 @@
         };
         reader.readAsText(file);
       }
+    }
+
+    // ファイル選択時の処理
+    input.addEventListener('change', () => {
+      const file = input.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const fileData = {
+          name: file.name,
+          type: file.type,
+          data: reader.result
+        };
+
+        saveToCookies(fileData);  // クッキーに保存
+        displayFile(fileData);  // 表示
+      };
+      reader.readAsDataURL(file);  // Base64エンコードして読み込む
     });
+
+    // ページ読み込み時にクッキーからファイルを復元
+    loadFromCookies();
   </script>
 
 </body>
