@@ -77,6 +77,11 @@
     <button id="copyBtn" style="display:none;">コピー</button>
   </div>
 
+  <!-- MIDI.js ライブラリの読み込み -->
+  <script src="https://cdn.jsdelivr.net/npm/midi.js@0.3.0/dist/midi.min.js"></script>
+  <!-- JSZip ライブラリの読み込み -->
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.7.1/dist/jszip.min.js"></script>
+
   <script>
     const input = document.getElementById('fileInput');
     const viewer = document.getElementById('viewer');
@@ -106,6 +111,60 @@
         audio.src = URL.createObjectURL(file);
         audio.controls = true;
         viewer.appendChild(audio);
+      } else if (file.name.endsWith('.midi') || file.name.endsWith('.mid')) {
+        const midiUrl = URL.createObjectURL(file);
+        
+        MIDI.loadPlugin({
+          soundfontUrl: 'https://cdn.jsdelivr.net/npm/midi.js@0.3.0/soundfonts/',
+          instrument: 'acoustic_grand_piano',
+          onprogress: function(state, progress) {
+            console.log(state + ': ' + progress + '%');
+          },
+          onready: function() {
+            MIDI.Player.loadFile(midiUrl, function() {
+              MIDI.Player.start();
+            });
+          }
+        });
+
+        const midiInfo = document.createElement('p');
+        midiInfo.textContent = 'MIDIファイルが読み込まれました。再生中...';
+        viewer.appendChild(midiInfo);
+      } else if (file.name.endsWith('.zip')) {
+        const zip = new JSZip();
+        zip.loadAsync(file)
+          .then(function(contents) {
+            const fileNames = Object.keys(contents.files);
+            const fileList = document.createElement('ul');
+            fileNames.forEach(function(fileName) {
+              const li = document.createElement('li');
+              const link = document.createElement('a');
+              link.href = '#';
+              link.textContent = fileName;
+              link.onclick = function() {
+                const file = contents.files[fileName];
+                file.async('text').then(function(fileContent) {
+                  const pre = document.createElement('pre');
+                  pre.textContent = fileContent;
+                  viewer.appendChild(pre);
+                  copyBtn.style.display = 'block';
+                  copyBtn.onclick = () => {
+                    navigator.clipboard.writeText(fileContent);
+                    copyBtn.textContent = 'コピー完了！';
+                    setTimeout(() => copyBtn.textContent = 'コピー', 2000);
+                  };
+                });
+              };
+              li.appendChild(link);
+              fileList.appendChild(li);
+            });
+            viewer.appendChild(fileList);
+          })
+          .catch(function(err) {
+            const errorMessage = document.createElement('p');
+            errorMessage.textContent = 'ZIPファイルの読み込み中にエラーが発生しました。';
+            viewer.appendChild(errorMessage);
+          });
       } else {
         const reader = new FileReader();
         reader.onload = () => {
