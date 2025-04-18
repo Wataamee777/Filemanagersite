@@ -87,6 +87,9 @@
     const viewer = document.getElementById('viewer');
     const copyBtn = document.getElementById('copyBtn');
 
+    // MIDI.js の音源URL
+    const soundfontUrl = 'https://cdn.jsdelivr.net/npm/midi.js@0.3.0/soundfonts/';
+
     input.addEventListener('change', () => {
       const file = input.files[0];
       if (!file) return;
@@ -113,16 +116,17 @@
         viewer.appendChild(audio);
       } else if (file.name.endsWith('.midi') || file.name.endsWith('.mid')) {
         const midiUrl = URL.createObjectURL(file);
-        
+
+        // MIDI.jsで音源の設定とファイルの再生を行う
         MIDI.loadPlugin({
-          soundfontUrl: 'https://cdn.jsdelivr.net/npm/midi.js@0.3.0/soundfonts/',
-          instrument: 'acoustic_grand_piano',
+          soundfontUrl: soundfontUrl,
+          instrument: 'acoustic_grand_piano', // 使用する楽器
           onprogress: function(state, progress) {
             console.log(state + ': ' + progress + '%');
           },
           onready: function() {
             MIDI.Player.loadFile(midiUrl, function() {
-              MIDI.Player.start();
+              MIDI.Player.start(); // MIDIファイルの再生
             });
           }
         });
