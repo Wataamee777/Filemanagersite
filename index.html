@@ -11,7 +11,6 @@
       height: 100vh;
     }
 
-    /* 左側のメニュー */
     .sidebar {
       width: 350px;
       background: #67abeb;
@@ -20,7 +19,6 @@
       box-sizing: border-box;
     }
 
-    /* 右側の表示エリア */
     .main {
       flex: 1;
       position: relative;
@@ -29,12 +27,28 @@
       overflow: auto;
     }
 
-    .main pre, .main video, .main audio, .main img {
+    .main img, .main video {
       max-width: 100%;
-      margin-top: 10px;
+      max-height: 80vh;
+      display: block;
+      margin: 0 auto;
     }
 
-    /* コピー用ボタン */
+    .main audio {
+      display: block;
+      margin: 40px auto;
+    }
+
+    .main pre {
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      background: #fff;
+      padding: 15px;
+      border-radius: 5px;
+      max-height: 80vh;
+      overflow: auto;
+    }
+
     #copyBtn {
       position: absolute;
       bottom: 20px;
@@ -55,62 +69,60 @@
 <body>
 
   <div class="sidebar">
-    <h2>ファイル選択</h2>
+    <h2>ファイルビューア</h2>
     <input type="file" id="fileInput">
   </div>
 
-  <div class="main">
-    <div id="output"></div>
-    <button id="copyBtn">コピー</button>
+  <div class="main" id="viewer">
+    <button id="copyBtn" style="display:none;">コピー</button>
   </div>
 
   <script>
-    const fileInput = document.getElementById('fileInput');
-    const output = document.getElementById('output');
+    const input = document.getElementById('fileInput');
+    const viewer = document.getElementById('viewer');
     const copyBtn = document.getElementById('copyBtn');
-    const mediaTypes = ['png', 'jpg', 'jpeg', 'gif','tiff', ',AVI','MOV','FLV','WebM','bmp', 'mp4', 'mp3', 'webm', 'wav', 'ogg','AIFF','FLAC','MPEG','AAC','opus','m4a','wma'];
 
-    fileInput.addEventListener('change', async () => {
-      output.innerHTML = '';
-      const file = fileInput.files[0];
+    input.addEventListener('change', () => {
+      const file = input.files[0];
       if (!file) return;
 
-      const ext = file.name.split('.').pop().toLowerCase();
+      viewer.innerHTML = '';
+      viewer.appendChild(copyBtn);
+      copyBtn.style.display = 'none';
 
-      if (mediaTypes.includes(ext)) {
-        const url = URL.createObjectURL(file);
-        let element;
-        if (['png', 'jpg', 'jpeg', 'gif', 'bmp','tiff'].includes(ext)) {
-          element = document.createElement('img');
-          element.src = url;
-        } else if (['mp4', 'webm','mov','bpm','avi','flv'].includes(ext)) {
-          element = document.createElement('video');
-          element.src = url;
-          element.controls = true;
-        } else if (['mp3', 'wav',  'ogg','AIFF','FLAC','MPEG','AAC','opus','m4a','wma'].includes(ext)) {
-          element = document.createElement('audio');
-          element.src = url;
-          element.controls = true;
-        }
-        output.appendChild(element);
-      } else {
-        const text = await file.text();
-        const pre = document.createElement('pre');
-        pre.textContent = text;
-        output.appendChild(pre);
-      }
-    });
+      const type = file.type;
 
-    copyBtn.addEventListener('click', () => {
-      const pre = output.querySelector('pre');
-      if (pre) {
-        navigator.clipboard.writeText(pre.textContent)
-          .then(() => alert('コピーしました！'))
-          .catch(err => alert('コピーに失敗しました'));
+      if (type.startsWith('image/')) {
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        viewer.appendChild(img);
+      } else if (type.startsWith('video/')) {
+        const video = document.createElement('video');
+        video.src = URL.createObjectURL(file);
+        video.controls = true;
+        viewer.appendChild(video);
+      } else if (type.startsWith('audio/')) {
+        const audio = document.createElement('audio');
+        audio.src = URL.createObjectURL(file);
+        audio.controls = true;
+        viewer.appendChild(audio);
       } else {
-        alert('コピーできるテキストがありません');
+        const reader = new FileReader();
+        reader.onload = () => {
+          const pre = document.createElement('pre');
+          pre.textContent = reader.result;
+          viewer.appendChild(pre);
+          copyBtn.style.display = 'block';
+          copyBtn.onclick = () => {
+            navigator.clipboard.writeText(reader.result);
+            copyBtn.textContent = 'コピー完了！';
+            setTimeout(() => copyBtn.textContent = 'コピー', 2000);
+          };
+        };
+        reader.readAsText(file);
       }
     });
   </script>
+
 </body>
 </html>
